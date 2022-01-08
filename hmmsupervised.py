@@ -1,72 +1,34 @@
 
 from itertools import product
-import numpy as np
 from hmmlearn import hmm
 from sklearn.base import BaseEstimator
-import pandas as pd
-from sklearn.metrics import confusion_matrix, roc_curve, auc
-import matplotlib.pyplot as plt
 from pycaret.classification import *
-
-# class HMMRegressor(BaseEstimator):
-#     def __init__(self, n_components):
-#       self.n_components = n_components
-#
-#     def fit(self, X, y, cols=[]):
-#       if cols is None:
-#         X_train = np.hstack([np.array(X), np.array(y).reshape(-1, 1)])
-#       elif cols == []:
-#         X_train = np.array(y).reshape(-1, 1)
-#       else:
-#         X_train = np.hstack([np.array(X[cols]), np.array(y).reshape(-1, 1)])
-#       self.remodel = hmm.GaussianHMM(n_components=self.n_components, covariance_type="full", n_iter=100)
-#       self.remodel.fit(X_train)
-#       self.transmat = self.remodel.transmat_
-#       self.Z = self.remodel.predict(X_train)
-#       self.curr_state = self.Z[-1]
-#       return self
-#
-#     def get_next_state(self, state):
-#       next_state = self.transmat[state, :].argmax()
-#       return next_state
-#
-#     def get_best_path(self, path_length=1, init_state=None):
-#       if init_state is None:
-#         init_state = self.curr_state
-#       else:
-#         pass
-#       path = []
-#       state = init_state
-#       for i in range(path_length):
-#         state = self.get_next_state(state)
-#         path.append(state)
-#       return path
-#
-#     def predict(self, X):
-#       num_steps = X.shape[0]
-#       pred_path = self.get_best_path(path_length=num_steps)
-#       return pred_path
 
 
 class HMMClassifier(BaseEstimator):
-    def __init__(self, n_components, mode="cat"):
+    def __init__(self, n_components, mode="convert"):
       self.n_components = n_components
       self.mode = mode
-        
-    def fit(self, X, y, epsilon=1.0):
+
+    def fit(self, X, y, epsilon=0.1):
       if self.mode == "all":
         X_train = np.hstack([np.array(X), np.array(y).reshape(-1, 1)])
       elif self.mode == "target":
         X_train = np.array(y).reshape(-1, 1)
       elif self.mode == "cat":
-        X_train = np.hstack([np.array(X.select_dtypes(exclude=["number"])), np.array(y).reshape(-1, 1)])
-      
+        X_train = np.hstack([np.array(X.select_dtypes(exclude=["number"])), np.array(y.astype(str)).reshape(-1, 1)])
+      elif self.mode == "convert":
+        X_train = np.hstack([np.array(X.astype(str)), np.array(y).reshape(-1, 1)])
+
+      # print(X_train[:10])
+      print(X.head())
+      print("X.nunique(): {}".format(X.nunique()))
+      print("y.nunique: {}".format(y.nunique()))
+
       # Needa convert to series first!
       if len(np.squeeze(X_train).shape) > 1:
         test_values = [set(x) for x in X_train.T]
         X_train = pd.Series(map(tuple, X_train))
-
-        # self.label_map = pd.Series(np.arange(X_train.nunique()), index=X_train.unique()).to_dict()
 
         prods = set(product(*test_values))
         observed_combos = set(X_train.unique())
@@ -135,9 +97,12 @@ class HMMClassifier(BaseEstimator):
       final_probs = []
       for x, y in zip(X.iterrows(), pred_path):
         try:
-          relevant_cols, _ = get_relevant_cols(self.state_prob, tuple(x[1].values))
+          if self.mode == "convert":
+            relevant_cols, _ = get_relevant_cols(self.state_prob, tuple(x[1].values.astype(str)))
+          else:
+            relevant_cols, _ = get_relevant_cols(self.state_prob, tuple(x[1].values))
           test_mat = self.state_prob[relevant_cols].loc[y]
-          test_y = test_mat.index.map(lambda x: x[-1]).tolist()
+          test_y = test_mat.index.map(lambda z: z[-1]).tolist()
           final_probs.append(test_mat.groupby(test_y).sum().sort_index().values)
           final_result.append(test_mat.idxmax()[-1])
         except:
@@ -151,4 +116,4 @@ class HMMClassifier(BaseEstimator):
     
     def predict_proba(self, X):
       _, _, _, _, y = self.predict_viterbi(X)
-      return y
+      return y/y.sum(axis=1).reshape(-1, 1)
