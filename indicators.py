@@ -18,32 +18,25 @@ def beta(coin, df_pivot_filtered):
 
 def direct_mov(coins, df_pivot_filtered):
   # Calculating Directional Movement Index (DX)
-
   df_dx = pd.DataFrame(
     talib.DX(df_pivot_filtered[coins + '_HIGH'], df_pivot_filtered[coins + '_LOW'], df_pivot_filtered[coins + '_CLOSE'],
              timeperiod=60))
   df_dx.rename(columns={0: 'dx'}, inplace=True)
   df_dx.reset_index(drop=True, inplace=True)
-  # df_dx
 
   # Calculating Average Directional Movement Index (ADX)
-
   df_adx = pd.DataFrame(talib.ADX(df_pivot_filtered[coins + '_HIGH'], df_pivot_filtered[coins + '_LOW'],
                                   df_pivot_filtered[coins + '_CLOSE'], timeperiod=60))
   df_adx.rename(columns={0: 'adx'}, inplace=True)
   df_adx.reset_index(drop=True, inplace=True)
-  # df_adx
 
   # Calculating Minus Directional Indicator (-DI)
-
   df_adx_neg = pd.DataFrame(
     talib.MINUS_DM(df_pivot_filtered[coins + '_HIGH'], df_pivot_filtered[coins + '_LOW'], timeperiod=60))
   df_adx_neg.rename(columns={0: 'adx_neg'}, inplace=True)
   df_adx_neg.reset_index(drop=True, inplace=True)
-  # df_adx_neg
 
   # Calculating Positive Directional Indicator (+DI)
-
   df_dx_pos = pd.DataFrame(
     talib.PLUS_DM(df_pivot_filtered[coins + '_HIGH'], df_pivot_filtered[coins + '_LOW'], timeperiod=60))
   df_dx_pos.rename(columns={0: 'dx_pos'}, inplace=True)
